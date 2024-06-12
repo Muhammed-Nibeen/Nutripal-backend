@@ -20,7 +20,7 @@ const authMiddleware =(req:Request,res:Response,next:NextFunction)=>{
     console.log('token is',token)
     jwt.verify(token,process.env.JWT_SECRET as string,(err, user)=>{
       if(err){
-        return res.sendStatus(403);
+        return res.sendStatus(401);
       }
       req.user = user;
       console.log('user from auth middleware')

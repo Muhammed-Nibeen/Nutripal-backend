@@ -2,12 +2,15 @@ import {Model, Schema,Document, ObjectId } from "mongoose"
 const mongoose = require('mongoose')
 
 export interface FoodDocument extends Document{
+  _id: ObjectId,
   foodName: string,
   kcal: number,
   protein: number,
   carbs: number,
   fats: number,
-  image: File
+  category: string,
+  portion: string,
+  imageUrl: string
 }
 
 const foodSchema:Schema<FoodDocument>= new Schema({
@@ -16,7 +19,9 @@ const foodSchema:Schema<FoodDocument>= new Schema({
   protein:{type: Number,required:true},
   carbs:{type: Number,required: true},
   fats:{type: Number,required: true},
-  image:{type: File,required: true}
+  category:{type: String,required: true},
+  portion:{type: String,required: true},
+  imageUrl:{type: String,required: true}
 })
 
 export const foodCollection = mongoose.model('food',foodSchema) as Model<FoodDocument>

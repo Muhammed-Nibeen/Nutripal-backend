@@ -4,6 +4,8 @@ import { userCollection } from '../../Model/userSchema';
 import bcrypt from 'bcrypt';
 import { generateToken } from '../../utils/jwtToken';
 import { nutriCollection } from '../../model/nutriSchema';
+import { foodCollection } from '../../model/food';
+import { ResponseStatus } from '../../constants/statusCodeEnums';
 
 export const AdminController = {
 
@@ -18,7 +20,7 @@ export const AdminController = {
         if(isPasswordCorrect){
           if(!admin.isblocked){
             const token = generateToken(admin._id,admin.role,process.env.JWT_SECRET as string)
-            res.status(200).json({message:'Login success',token,admin})
+            res.status(ResponseStatus.OK).json({message:'Login success',token,admin})
           }else{
             res.status(400).json({error:'Account is blocked'})
           }
@@ -30,7 +32,7 @@ export const AdminController = {
       }
     }catch(error){
       console.error(error)
-      res.status(500).json({error:'Internal server error'})
+      res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
     }
   }),
 
@@ -42,11 +44,11 @@ export const AdminController = {
       const users = await userCollection.find({role:'User'}).skip(skip)
       .limit(limit)
       const totalcount = await userCollection.countDocuments();
-      res.status(200).json({message:'List of users',users,totalcount})
+      res.status(ResponseStatus.OK).json({message:'List of users',users,totalcount})
     }
     catch(error){
       console.error(error);
-      res.status(500).json({error:'Error fetching data'})
+      res.status(ResponseStatus.BadRequest).json({error:'Error fetching data'})
     }
   }),
   
@@ -56,27 +58,27 @@ export const AdminController = {
       const id = req.params.id
       const user = await userCollection.findById(id)
       if(!user){
-        res.status(500).json({error:'No user found'})
+        res.status(ResponseStatus.BadRequest).json({error:'No user found'})
       }else{
         user.isblocked = !user.isblocked
         await user.save();
         const updatedUser = await userCollection.findById(id)
-        res.status(200).json({message:'Updated successfully',updatedUser})
+        res.status(ResponseStatus.OK).json({message:'Updated successfully',updatedUser})
       }
     }catch(error){
       console.error(error)
-      res.status(500).json({error:'Error fetching User'})
+      res.status(ResponseStatus.BadRequest).json({error:'Error fetching User'})
     }
   }),
 
   getNutris: asyncHandler(async(req:Request,res:Response)=>{
     try{
       const users = await nutriCollection.find({role:'Nutritionist'});
-      res.status(200).json({message:'List of users',users})
+      res.status(ResponseStatus.OK).json({message:'List of users',users})
     }
     catch(error){
       console.error(error);
-      res.status(500).json({error:'Error fetching data'})
+      res.status(ResponseStatus.BadRequest).json({error:'Error fetching data'})
     }
   }),
 
@@ -86,16 +88,16 @@ export const AdminController = {
       const id = req.params.id
       const user = await nutriCollection.findById(id)
       if(!user){
-      res.status(500).json({error:'No Nutritionist found'})
+      res.status(ResponseStatus.BadRequest).json({error:'No Nutritionist found'})
       }else{
         user.isblocked = !user.isblocked
         await user.save();
         const updatedUser = await nutriCollection.findById(id)
-        res.status(200).json({message:'Updated successfully',updatedUser})
+        res.status(ResponseStatus.OK).json({message:'Updated successfully',updatedUser})
       }
     }catch(error){
       console.error(error)
-      res.status(500).json({error:'Error fetching Nutritionist'})
+      res.status(ResponseStatus.BadRequest).json({error:'Error fetching Nutritionist'})
     }
   }),
 
@@ -107,27 +109,37 @@ export const AdminController = {
         email: { $regex: new RegExp(searchQuery, 'i') }
       });
       console.log(user)
-      res.status(200).json({message:'List of users',user})
+      res.status(ResponseStatus.OK).json({message:'List of users',user})
     }catch(error){
       console.error(error);
-      res.status(500).json({ error: 'No such user exist'});
+      res.status(ResponseStatus.BadRequest).json({ error: 'No such user exist'});
     }
   }),
 
   addFood: asyncHandler(async(req: Request, res: Response) => {
     try {
-      const image = req.file?.filename;
+      const foodimage = req.file?.filename;
       console.log(req.body); 
-      console.log(image)
-   
-  
-     
-      
-  
-
-  
+      const kcal = Number(req.body.kcal);
+      const protein = Number(req.body.protein);
+      const carbs = Number(req.body.carbs);
+      const fats = Number(req.body.fats);
+      console.log("Kcal is",kcal)
+      const addFood={
+        foodName:req.body.foodName,
+        kcal: isNaN(kcal)? 0 : kcal,
+        protein: isNaN(protein)? 0 : protein,
+        carbs: isNaN(carbs)? 0 : carbs,
+        fats: isNaN(fats)? 0 : fats,
+        category:req.body.category,
+        portion:req.body.portion,
+        imageUrl:foodimage
+      }
+      await foodCollection.create(addFood)
+     res.status(ResponseStatus.OK).json({message:'Food item added successfully'})
     } catch (error) {
       console.log(error);
+      res.status(ResponseStatus.BadRequest).json({ error: 'No such user exist'});
     }
   })
   

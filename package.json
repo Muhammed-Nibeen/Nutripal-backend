@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -20,7 +21,8 @@
     "mongoose": "^8.3.3",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.13",
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.0",
+    "paypal-rest-sdk": "^1.8.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -28,6 +30,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/multer": "^1.4.11",
     "@types/nodemailer": "^6.4.15",
+    "@types/paypal-rest-sdk": "^1.7.9",
     "ts-node": "^10.9.2"
   }
 }

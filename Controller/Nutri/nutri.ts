@@ -4,12 +4,14 @@ import { randomBytes } from 'crypto';
 import nodemailer from 'nodemailer';
 import { Otp } from '../../model/otpUser';
 import bcrypt from 'bcrypt';
-
-
-
 import dotenv from 'dotenv'
 import { generateToken } from '../../utils/jwtToken';
 import { nutriCollection } from '../../model/nutriSchema';
+import { ResponseStatus } from '../../constants/statusCodeEnums';
+import mongoose from 'mongoose';
+import { appointmentCollection } from '../../model/appoinments';
+import { userCollection } from '../../Model/userSchema';
+
 //Otp generator function
 const generateOTP = (length: number): string => {
   const digits = "0123456789";
@@ -58,7 +60,7 @@ export const NutriController = {
       }
       const emailExists = await nutriCollection.findOne({email:newNutri.email})   
       if(emailExists){
-        res.status(400).json({message: 'Email already registered' });
+        res.status(ResponseStatus.BadRequest).json({message: 'Email already registered' });
     }else{
         //Generate Otp
         const otp = generateOTP(4)
@@ -78,7 +80,7 @@ export const NutriController = {
         }catch(error){
             console.error('Failed to save Otp',error)
         }
-        res.status(200).json({message:'Otp send to mail'})
+        res.status(ResponseStatus.OK).json({message:'Otp send to mail'})
     }
 }   catch(error){
     console.error(error)
@@ -106,16 +108,16 @@ export const NutriController = {
                 }
                 await nutriCollection.create(newNutri)
                 .then(success=>{
-                    res.status(200).json({message:'Signup successfull'})
+                    res.status(ResponseStatus.OK).json({message:'Signup successfull'})
                 }).catch(error=>{
                     console.log('fail',error)
                 })
             }else{
-                res.status(400).json({error:'Incorrect OTP'})
+                res.status(ResponseStatus.BadRequest).json({error:'Incorrect OTP'})
             }
         }else{
             
-            res.status(400).json({message:'OTP is expired'})
+            res.status(ResponseStatus.BadRequest).json({message:'OTP is expired'})
         }
     }catch(error){
         console.log(error);
@@ -136,19 +138,74 @@ export const NutriController = {
                   if(!user.isblocked){
                   //generate jwt token
                   const token = generateToken( user._id,user.role,process.env.JWT_SECRET as string);
-                  res.status(200).json({message:'Login successfull',token,user})
+                  res.status(ResponseStatus.OK).json({message:'Login successfull',token,user})
                   }else{
-                      res.status(400).json({error:'Account is blocked'})
+                      res.status(ResponseStatus.BadRequest).json({error:'Account is blocked'})
                   }
               }else{
-                  res.status(400).json({error:'Incorrrect password'})
+                  res.status(ResponseStatus.BadRequest).json({error:'Incorrrect password'})
               }
           }else{
-              res.status(400).json({error:'Incorrect email and password'})
+              res.status(ResponseStatus.BadRequest).json({error:'Incorrect email and password'})
           }
       }catch(error){
           console.error(error)
           res.status(500).json({error:'Internal server error'})
       }
 }),
+
+    scheduleAppointment: asyncHandler(async (req: Request, res: Response)=>{
+        try{
+            if(req.body){
+                const date = req.body.data.date
+                const time = req.body.data.time
+                const nutri_idString = req.body.nutri_id.id
+                const nutriId = new mongoose.Types.ObjectId(nutri_idString)
+                console.log(date,time,nutriId)
+                const newAppointment={
+                    nutri_id:nutriId,
+                    date,
+                    time
+                }
+                await appointmentCollection.create(newAppointment)
+                res.status(ResponseStatus.OK).json({message:'Appointment Scheduled'});
+            }
+        }catch(error){
+        console.error(error)
+        res.status(ResponseStatus.BadRequest).json({error:'Internal server error'}) 
+        }
+    }),
+
+    getAppointment:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const idString = req.body.id
+            const id = new mongoose.Types.ObjectId(idString)
+            const appoinments = await appointmentCollection.find({nutri_id:id})
+            if(!appoinments){
+                res.status(ResponseStatus.OK).json({message:'No slots booked'})
+            }else{
+                res.status(ResponseStatus.OK).json({message:'Appointments',appoinments})
+            }
+        }
+        catch(error){
+            console.error(error)
+            res.status(500).json({error:'Internal server error'})
+        }
+    }),
+
+    showuserApp:asyncHandler(async(req:Request,res:Response)=>{
+        try{            
+        const idS = req.body
+        const id = new mongoose.Types.ObjectId(idS)
+        console.log('This is the apointid',id);
+        const useridS = await appointmentCollection.findById(id).select('user_id')
+        const userId = useridS?.user_id
+        const user = await userCollection.findById(userId)
+        console.log(user);
+        res.status(ResponseStatus.OK).json({message:'User',user})
+        }catch(error){
+            console.error(error)
+            res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
+        }
+    })
 }

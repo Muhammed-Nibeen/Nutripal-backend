@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import { userCollection } from '../../Model/userSchema';
-import { randomBytes } from 'crypto';
 import nodemailer from 'nodemailer';
 import { Otp } from '../../model/otpUser';
 import bcrypt from 'bcrypt';
@@ -9,22 +8,20 @@ import bcrypt from 'bcrypt';
 import { bmiCollection } from '../../model/bmi';
 import { ObjectId } from 'mongodb';
 import dotenv from 'dotenv'
-import { generateToken } from '../../utils/jwtToken';
+import { generaterefreshToken, generateToken } from '../../utils/jwtToken';
 import mongoose from 'mongoose';
+import { foodCollection, FoodDocument } from '../../model/food';
+import { nutriCollection } from '../../model/nutriSchema';
+import { appointmentCollection } from '../../model/appoinments';
+import { ResponseStatus } from '../../constants/statusCodeEnums';
+import { generateOTP } from '../../utils/genOtp';
+import { verifyRefreshToken } from '../../utils/refreshtokenVerify';
+import { generatenewtoken } from '../../utils/newAccessToken';
+
 dotenv.config()
 
-//Otp generator function
-const generateOTP = (length: number): string => {
-    const digits = "0123456789";
-    let OTP = "";
 
-    for (let i = 0; i < length; i++) {
-        const randomIndex = randomBytes(1)[0] % digits.length;
-        OTP += digits[randomIndex];
-    }
 
-    return OTP;
-};
 
 const sendOtpEmail = async (email:string,otp:string): Promise<void> =>{
     const transporter = nodemailer.createTransport({
@@ -63,7 +60,7 @@ export const UserController = {
             }
         const emailExists = await userCollection.findOne({email:newUser.email})   
         if(emailExists){
-            res.status(400).json({error: 'Email already registered' });
+            res.status(ResponseStatus.BadRequest).json({error: 'Email already registered' });
         }else{
             //Generate Otp
             const otp = generateOTP(4)
@@ -83,7 +80,7 @@ export const UserController = {
             }catch(error){
                 console.error('Failed to save Otp',error)
             }
-            res.status(200).json({message:'Otp send to mail'})
+            res.status(ResponseStatus.OK).json({message:'Otp send to mail'})
         }
     }   catch(error){
         console.error(error)
@@ -111,16 +108,16 @@ export const UserController = {
                 }
                 await userCollection.create(newUser)
                 .then(success=>{
-                    res.status(200).json({message:'Signup successfull'})
+                    res.status(ResponseStatus.OK).json({message:'Signup successfull'})
                 }).catch(error=>{
                     console.log('fail',error)
                 })
             }else{
-                res.status(400).json({error:'Incorrect OTP'})
+                res.status(ResponseStatus.BadRequest).json({error:'Incorrect OTP'})
             }
         }else{
             
-            res.status(400).json({message:'OTP is expired'})
+            res.status(ResponseStatus.BadRequest).json({message:'OTP is expired'})
         }
     }catch(error){
         console.log(error);
@@ -141,15 +138,16 @@ export const UserController = {
                     if(!user.isblocked){
                     //generate jwt token
                     const token = generateToken( user._id,user.role,process.env.JWT_SECRET as string);
-                    res.status(200).json({message:'Login successfull',token,user})
+                    const refreshToken = generaterefreshToken( user._id,user.role,process.env.JWT_SECRET as string);
+                    res.status(ResponseStatus.OK).json({message:'Login successfull',token,user,refreshToken})
                     }else{
-                        res.status(400).json({error:'Account is blocked'})
+                        res.status(ResponseStatus.BadRequest).json({error:'Account is blocked'})
                     }
                 }else{
-                    res.status(400).json({error:'Incorrrect password'})
+                    res.status(ResponseStatus.BadRequest).json({error:'Incorrrect password'})
                 }
             }else{
-                res.status(400).json({error:'Incorrect email and password'})
+                res.status(ResponseStatus.BadRequest).json({error:'Incorrect email and password'})
             }
         }catch(error){
             console.error(error)
@@ -185,9 +183,9 @@ export const UserController = {
                     console.error('Failed to save Otp',error)
                 }
 
-                res.status(200).json({message:'Otp send to mail'})
+                res.status(ResponseStatus.OK).json({message:'Otp send to mail'})
             }else{
-                res.status(400).json({error:'Invalid user'})
+                res.status(ResponseStatus.BadRequest).json({error:'Invalid user'})
             }
         }catch(error){
             res.status(500).json({error:'Internal server error'})
@@ -205,12 +203,12 @@ export const UserController = {
 
             if(otpRecord){
                 if(otpRecord.otp === enteredOtp){
-                    res.status(200).json({message:'Otp verification success'})
+                    res.status(ResponseStatus.OK).json({message:'Otp verification success'})
                 }else{
-                    res.status(400).json({error:'Incorrect OTP'})
+                    res.status(ResponseStatus.BadRequest).json({error:'Incorrect OTP'})
                 }
             }else{
-                res.status(400).json({message:'OTP is expired'})
+                res.status(ResponseStatus.BadRequest).json({message:'OTP is expired'})
             }
 
         }catch(error){
@@ -231,7 +229,7 @@ export const UserController = {
                 {email:email},
                 {$set:{password:hashedPasswordNew}}
             )
-            res.status(200).json({message:'Password changed successfully'})
+            res.status(ResponseStatus.OK).json({message:'Password changed successfully'})
         }catch(error){
             console.log(error);
             res.status(500).json({error:'Failed to Change Password'})
@@ -260,7 +258,7 @@ export const UserController = {
             } catch (error) {
                 console.error('Failed to save OTP:', error);
             }
-            res.status(200).json({ message: 'New OTP sent to mail.', email });
+            res.status(ResponseStatus.OK).json({ message: 'New OTP sent to mail.', email });
         }catch (error) {
             console.error(error);
             res.status(500).json({ error: 'Internal server error' });
@@ -294,7 +292,7 @@ export const UserController = {
             }
             await bmiCollection.create(newBmi)
             .then(success=>{
-                res.status(200).json({message:'Bmi calculated'})
+                res.status(ResponseStatus.OK).json({message:'Bmi calculated'})
             }).catch(error=>{
                 console.log('fail',error)
             })
@@ -328,22 +326,146 @@ export const UserController = {
                     result = [25.5];
                 }
             }
-            res.status(200).json({message:'Bmi Count',bmiValues,result})
+            res.status(ResponseStatus.OK).json({message:'Bmi Count',bmiValues,result})
         }catch(error){
             console.error(error)
             res.status(500).json({error:'Error'})
         }
-      })
+      }),
 
-//home
-//     test:asyncHandler(async(req:Request,res:Response)=>{
-//         try{
-//             console.log('Request user_id: ',req.user_id)
-//             const user = await userCollection.findById(req.user_id)
-//             console.log(user)
-//         }catch(error){
-//             res.status(500).json({error:'Internal server error'})
-//         }
-//     })
+      displayFood:asyncHandler(async(req:Request,res:Response)=>{
+        console.log(req.body)
+        const bmiCount = req.body[0]
+        console.log("This is the bmi count ",bmiCount)
+        let food:FoodDocument[]
+        if(bmiCount<=18.5){
+            food = await foodCollection.find({category:"breakfast",portion:"light"}).limit(3)
+            
+        }else if(bmiCount>=18.5){
+            food = await foodCollection.find({category:"breakfast",portion:"heavy"}).limit(3) 
+        }else{
+            food = await foodCollection.find({category:"breakfast",portion:"moderate"}).limit(3) 
+        }
+        res.status(ResponseStatus.OK).json({message:'Food items ',food})
+      }),
 
+      displayLunch:asyncHandler(async(req:Request,res:Response)=>{
+        console.log(req.body)
+        const bmiCount = req.body[0]
+        console.log("This is the bmi count ",bmiCount)
+        let food:FoodDocument[]
+        if(bmiCount<=18.5){
+            food = await foodCollection.find({category:"lunch",portion:"light"}).limit(3)
+            
+        }else if(bmiCount>=18.5){
+            food = await foodCollection.find({category:"lunch",portion:"heavy"}).limit(3) 
+        }else{
+            food = await foodCollection.find({category:"lunch",portion:"moderate"}).limit(3) 
+        }
+        res.status(ResponseStatus.OK).json({message:'Food items ',food})
+      }),
+
+      displayDinner:asyncHandler(async(req:Request,res:Response)=>{
+        console.log(req.body)
+        const bmiCount = req.body[0]
+        console.log("This is the bmi count ",bmiCount)
+        let food:FoodDocument[]
+        if(bmiCount<=18.5){
+            food = await foodCollection.find({category:"dinner",portion:"light"}).limit(3)
+            
+        }else if(bmiCount>=18.5){
+            food = await foodCollection.find({category:"dinner",portion:"heavy"}).limit(3) 
+        }else{
+            food = await foodCollection.find({category:"dinner",portion:"moderate"}).limit(3) 
+        }
+        res.status(ResponseStatus.OK).json({message:'Food items ',food})
+      }),
+
+      getNutris: asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const appointments = await appointmentCollection.find()
+            const nutritionistPromises = appointments.map(async (appointment) => {
+                const nutritionistId = appointment.nutri_id;
+                const nutritionist = await nutriCollection.findOne({ _id: new ObjectId(nutritionistId) });
+                return {...appointment, nutritionist };
+            });
+            const combinedData = await Promise.all(nutritionistPromises);
+            console.log(combinedData);
+            // const nutriIds = appointment.map(appointment => appointment.nutri_id.toString());
+            // console.log(nutriIds)
+            // const nutritionist = await nutriCollection.find()
+            res.status(ResponseStatus.OK).json({message:'List of nutris',combinedData})
+            console.log(appointments)
+        }catch(error){
+            console.error(error)
+            res.status(ResponseStatus.BadRequest).json({error:'Error fetching details'})
+        }
+      }),
+
+      bookAppointment:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            console.log(req.body)
+            const appoinmentS=req.body.id
+            const userIdS = req.body.userId.id
+            const appointmentId = new mongoose.Types.ObjectId(appoinmentS)
+            const userId = new mongoose.Types.ObjectId(userIdS)
+            const updatedAppointment = await appointmentCollection.findOneAndUpdate(
+                {_id:appointmentId},
+                {
+                    user_id:userId,
+                    status: 'booked'
+                }
+            )
+            if(!updatedAppointment){
+                res.status(ResponseStatus.OK).json({message:'Appointment not booked'})
+            }
+            res.status(ResponseStatus.OK).json({message:'Appointment booked'})
+        }catch(error){
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+      }),
+
+      refreshToken:asyncHandler(async (req: Request, res: Response) => {
+        try {
+            const  refreshToken  = req.body;
+            if (!refreshToken) {
+                res.status(ResponseStatus.BadRequest).json({ error: 'Refresh token is missing' }); 
+            }
+    
+            const isTokenValid = await verifyRefreshToken(refreshToken);
+    
+            if (!isTokenValid) {
+                res.status(ResponseStatus.BadRequest).json({ error: "Invalid refresh token" });
+            }
+    
+            const newAccessToken = await generatenewtoken(refreshToken);
+            if (!newAccessToken) {
+                res.status(ResponseStatus.BadRequest).json({ error: "Error generating token" });
+            }
+            console.log('New token created:', newAccessToken);
+            res.status(ResponseStatus.OK).json({
+                accessToken: newAccessToken,
+                message: "Token refreshed",
+            });
+        }catch(error) {
+            console.error(error);
+           
+        }
+    }),
+
+    getUser:asyncHandler(async(req:Request,res:Response)=>{
+    try{
+        const userid = req.params.userid
+        const user = await userCollection.findById(userid)
+        console.log("This is the guard",user)
+        res.status(ResponseStatus.OK).json({message:'Succcessfully fetched data',user})
+    }catch(error){
+        console.error(error)
+        res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+      }),
+      
+      //Payment routes
+
+        
 }

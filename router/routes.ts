@@ -15,6 +15,13 @@ router.post('/forgotpassword/changepass',UserController.changePassword)
 router.post('/resendotp',UserController.resendOtp)
 router.post('/bmicalculation',authMiddleware,UserController.bmiCalculation)
 router.post('/showbmi',UserController.showBmi)
+router.post('/displayfood',UserController.displayFood)
+router.post('/displaylunch',UserController.displayLunch)
+router.post('/displaydinner',UserController.displayDinner)
+router.get('/getnutris',UserController.getNutris)
+router.post('/bookappointment',UserController.bookAppointment)
+router.post('/refreshtoken',UserController.refreshToken)
+router.get('/getuser/:userid',UserController.getUser)
 
 export const userRoute = router;
 
