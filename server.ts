@@ -1,7 +1,7 @@
 import { userRoute } from "./router/routes";
 import { adminRoute } from './router/adminRoutes'
 import { nutriRoute } from './router/nutriRoutes'
-// import { paymentRoute } from "./router/payment";
+import { paymentRoute } from "./router/payment";
 const express = require('express')
 const app = express()
 const cors = require('cors')
@@ -32,7 +32,7 @@ app.use('/admin', adminRoute)
 
 app.use('/nutri',nutriRoute)
 
-// app.use('/payment', paymentRoute);
+app.use('/payment', paymentRoute);
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

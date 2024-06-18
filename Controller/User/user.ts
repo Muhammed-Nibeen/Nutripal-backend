@@ -11,16 +11,25 @@ import dotenv from 'dotenv'
 import { generaterefreshToken, generateToken } from '../../utils/jwtToken';
 import mongoose from 'mongoose';
 import { foodCollection, FoodDocument } from '../../model/food';
-import { nutriCollection } from '../../model/nutriSchema';
+import { nutriCollection, NutriDocument } from '../../model/nutriSchema';
 import { appointmentCollection } from '../../model/appoinments';
 import { ResponseStatus } from '../../constants/statusCodeEnums';
 import { generateOTP } from '../../utils/genOtp';
 import { verifyRefreshToken } from '../../utils/refreshtokenVerify';
 import { generatenewtoken } from '../../utils/newAccessToken';
+import { AppointmentDocument } from '../../model/appoinments'
 
 dotenv.config()
 
 
+
+
+interface CombinedData {
+    
+    appointment: AppointmentDocument
+    nutritionist: NutriDocument
+    
+}
 
 
 const sendOtpEmail = async (email:string,otp:string): Promise<void> =>{
@@ -383,19 +392,17 @@ export const UserController = {
 
       getNutris: asyncHandler(async(req:Request,res:Response)=>{
         try{
-            const appointments = await appointmentCollection.find()
-            const nutritionistPromises = appointments.map(async (appointment) => {
+            const appointments = await appointmentCollection.find();
+            const combinedData: CombinedData[] = [];
+            
+            for(const appointment of appointments) {
                 const nutritionistId = appointment.nutri_id;
                 const nutritionist = await nutriCollection.findOne({ _id: new ObjectId(nutritionistId) });
-                return {...appointment, nutritionist };
-            });
-            const combinedData = await Promise.all(nutritionistPromises);
-            console.log(combinedData);
-            // const nutriIds = appointment.map(appointment => appointment.nutri_id.toString());
-            // console.log(nutriIds)
-            // const nutritionist = await nutriCollection.find()
-            res.status(ResponseStatus.OK).json({message:'List of nutris',combinedData})
-            console.log(appointments)
+                if(nutritionist){
+                    combinedData.push({ appointment, nutritionist });
+                }
+            }
+            res.status(ResponseStatus.OK).json({ message: 'List of nutris', combinedData });
         }catch(error){
             console.error(error)
             res.status(ResponseStatus.BadRequest).json({error:'Error fetching details'})
@@ -404,7 +411,7 @@ export const UserController = {
 
       bookAppointment:asyncHandler(async(req:Request,res:Response)=>{
         try{
-            console.log(req.body)
+            
             const appoinmentS=req.body.id
             const userIdS = req.body.userId.id
             const appointmentId = new mongoose.Types.ObjectId(appoinmentS)
@@ -463,8 +470,7 @@ export const UserController = {
         console.error(error)
         res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
         }
-      }),
-      
+      }),     
       //Payment routes
 
         
