@@ -9,6 +9,7 @@ export interface AppointmentDocument extends Document{
   user_id:Types.ObjectId;
   date: Date;
   time: String
+  end_time: String
   status: String
 }
 
@@ -17,6 +18,7 @@ const appoinmentSchema:Schema<AppointmentDocument>= new Schema({
   user_id: {type:Schema.Types.ObjectId},
   date: {type:Date,required:true},
   time: { type: String, required: true },
+  end_time: {type: String,required:true},
   status: {type: String, default:'pending'}
 })
 

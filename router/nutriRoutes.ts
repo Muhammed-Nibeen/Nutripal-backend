@@ -8,6 +8,13 @@ router.post('/signup/verify-otp', NutriController.verifyOtp)
 router.post('/login',NutriController.login)
 router.post('/scheduleappointment',NutriController.scheduleAppointment)
 router.post('/getappointment',NutriController.getAppointment)
+router.post('/getunbookedappointment',NutriController.getUnbookedAppointment)
 router.post('/showuserapp',NutriController.showuserApp)
+router.post('/getcount',NutriController.getCount)
+router.post('/deleteappointment',NutriController.deleteAppointment)
+router.post('/updateappointment',NutriController.updateAppointment)
+router.post('/saveprescription',NutriController.savePrescription)
+router.post('/getnamenutri',NutriController.getNameNutri)
+router.post('/getnameuser',NutriController.getNameUser)
 
 export const nutriRoute = router

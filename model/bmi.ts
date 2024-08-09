@@ -8,7 +8,8 @@ export interface BmiDocument extends Document{
   height: number,
   weight: number,
   bmi: number,
-  desweight: number
+  desweight: number,
+  created_at: Date
 }
 
 const bmiSchema:Schema<BmiDocument>= new Schema({
@@ -17,7 +18,8 @@ const bmiSchema:Schema<BmiDocument>= new Schema({
   height: {type:Number,required:true},
   weight: {type:Number,required:true},
   bmi: {type:Number,required: true},
-  desweight: {type:Number,required:true}
+  desweight: {type:Number,required:true},
+  created_at: {type:Date,default:Date.now}
 })
 
 export const bmiCollection = mongoose.model('bmi',bmiSchema) as Model<BmiDocument>

@@ -8,6 +8,7 @@ export interface PaymentDocument extends Document{
   user_id: Types.ObjectId;
   amount: number;
   appointment_id: Types.ObjectId
+  date: Date
 }
 
 const paymentSchema:Schema<PaymentDocument> = new Schema({
@@ -15,6 +16,7 @@ const paymentSchema:Schema<PaymentDocument> = new Schema({
   user_id: {type:Schema.Types.ObjectId,required: true},
   amount: {type: Number,required: true},
   appointment_id: {type:Schema.Types.ObjectId,required: true},
+  date:{type:Date,default:Date.now},
 }) 
 
 export const paymentCollection = mongoose.model('payment',paymentSchema) as Model<PaymentDocument>

@@ -18,6 +18,16 @@ import { generateOTP } from '../../utils/genOtp';
 import { verifyRefreshToken } from '../../utils/refreshtokenVerify';
 import { generatenewtoken } from '../../utils/newAccessToken';
 import { AppointmentDocument } from '../../model/appoinments'
+import { Message } from '../../model/message';
+import { userProgressCollection } from '../../model/userProgress';
+import { dailyIntakeCollection } from '../../model/dailyIntake';
+import { paymentCollection } from '../../model/payment';
+
+import PDFDocument from 'pdfkit';
+import fs from 'fs';
+import { prescriptionCollection } from '../../model/prescription';
+
+
 
 dotenv.config()
 
@@ -63,8 +73,11 @@ export const UserController = {
         try {
             console.log(req.body)
             const newUser={
-               fullName: req.body.fullName,
+                fullName: req.body.fullName,
                 email: req.body.email,
+                age: req.body.age,
+                sex: req.body.sex,
+                phoneNumber: req.body.phoneNumber,
                 password: req.body.password
             }
         const emailExists = await userCollection.findOne({email:newUser.email})   
@@ -102,7 +115,7 @@ export const UserController = {
         try{
             console.log('This is sucess',req.body)
             const{userData,enteredOtp} = req.body
-            const{fullName,email,password} = JSON.parse(userData)
+            const{fullName,email,password,age,sex,phoneNumber} = JSON.parse(userData)
             const otpRecord = await Otp.findOne({email:email})
 
             if(otpRecord){
@@ -113,6 +126,9 @@ export const UserController = {
                 const newUser={
                     fullName,
                     email,
+                    age,
+                    sex,
+                    phoneNumber,
                     password:hashedPassword
                 }
                 await userCollection.create(newUser)
@@ -316,26 +332,25 @@ export const UserController = {
 
             console.log('This is the data',req.body)
             console.log('This is the id',userId)
-            const bmiRecords = await bmiCollection.find({ user_id: userId }).select('bmi');
-            console.log('bmi is ', bmiRecords);
-            const bmiValues = bmiRecords.map(record => record.bmi);
-        
-            const desweight = await bmiCollection.find({user_id: userId}).select('desweight')
-            const desweightValues = desweight.map(record => record.desweight)
-            const weight = await bmiCollection.find({user_id: userId}).select('weight')
-            const weightValues = weight.map(record => record.weight)
-            let result = bmiValues
-            if (weightValues.length > 0 && desweightValues.length > 0) {
-                const weight = weightValues[0];
-                const desweight = desweightValues[0];
-    
-                if (weight > desweight) {
-                    result = [18.5];
-                } else if (weight < desweight) {
-                    result = [25.5];
+            const latestBmiRecord = await bmiCollection.findOne({ user_id: userId }).sort({ created_at: -1 }).select('bmi desweight weight');
+            console.log('bmi is ', latestBmiRecord);
+            if(latestBmiRecord){
+                const bmiValues = latestBmiRecord.bmi
+                const desweightValues =latestBmiRecord.desweight
+                const weightValues = latestBmiRecord.weight;
+                let result
+                if (weightValues > desweightValues) {
+                    result = 18.5;
+                } else if (weightValues < desweightValues) {
+                    result = 25.5;
+                } else{
+                    result = bmiValues
                 }
-            }
+            
             res.status(ResponseStatus.OK).json({message:'Bmi Count',bmiValues,result})
+            }else{
+            res.status(ResponseStatus.BadRequest).json({error:'Error fetching bmi'})
+            }
         }catch(error){
             console.error(error)
             res.status(500).json({error:'Error'})
@@ -344,7 +359,7 @@ export const UserController = {
 
       displayFood:asyncHandler(async(req:Request,res:Response)=>{
         console.log(req.body)
-        const bmiCount = req.body[0]
+        const bmiCount = req.body
         console.log("This is the bmi count ",bmiCount)
         let food:FoodDocument[]
         if(bmiCount<=18.5){
@@ -360,7 +375,7 @@ export const UserController = {
 
       displayLunch:asyncHandler(async(req:Request,res:Response)=>{
         console.log(req.body)
-        const bmiCount = req.body[0]
+        const bmiCount = req.body
         console.log("This is the bmi count ",bmiCount)
         let food:FoodDocument[]
         if(bmiCount<=18.5){
@@ -376,7 +391,7 @@ export const UserController = {
 
       displayDinner:asyncHandler(async(req:Request,res:Response)=>{
         console.log(req.body)
-        const bmiCount = req.body[0]
+        const bmiCount = req.body
         console.log("This is the bmi count ",bmiCount)
         let food:FoodDocument[]
         if(bmiCount<=18.5){
@@ -392,17 +407,14 @@ export const UserController = {
 
       getNutris: asyncHandler(async(req:Request,res:Response)=>{
         try{
-            const appointments = await appointmentCollection.find();
-            const combinedData: CombinedData[] = [];
+            const page = parseInt(req.body.page);
+            const limit = parseInt(req.body.limit);
+            const skip = (page -1) * limit;
+            const nutritionist = await nutriCollection.find().skip(skip).limit(limit);
+            const totalcount = await nutriCollection.countDocuments()
+            console.log(totalcount,'TC');
             
-            for(const appointment of appointments) {
-                const nutritionistId = appointment.nutri_id;
-                const nutritionist = await nutriCollection.findOne({ _id: new ObjectId(nutritionistId) });
-                if(nutritionist){
-                    combinedData.push({ appointment, nutritionist });
-                }
-            }
-            res.status(ResponseStatus.OK).json({ message: 'List of nutris', combinedData });
+            res.status(ResponseStatus.OK).json({ message: 'List of nutris', nutritionist,totalcount });
         }catch(error){
             console.error(error)
             res.status(ResponseStatus.BadRequest).json({error:'Error fetching details'})
@@ -411,7 +423,6 @@ export const UserController = {
 
       bookAppointment:asyncHandler(async(req:Request,res:Response)=>{
         try{
-            
             const appoinmentS=req.body.id
             const userIdS = req.body.userId.id
             const appointmentId = new mongoose.Types.ObjectId(appoinmentS)
@@ -438,16 +449,22 @@ export const UserController = {
             if (!refreshToken) {
                 res.status(ResponseStatus.BadRequest).json({ error: 'Refresh token is missing' }); 
             }
-    
+            console.log(req.body);
+            
             const isTokenValid = await verifyRefreshToken(refreshToken);
-    
+            
+            console.log('istokenValid',isTokenValid);
+            
+
             if (!isTokenValid) {
                 res.status(ResponseStatus.BadRequest).json({ error: "Invalid refresh token" });
+                return
             }
     
             const newAccessToken = await generatenewtoken(refreshToken);
             if (!newAccessToken) {
                 res.status(ResponseStatus.BadRequest).json({ error: "Error generating token" });
+                return
             }
             console.log('New token created:', newAccessToken);
             res.status(ResponseStatus.OK).json({
@@ -471,7 +488,328 @@ export const UserController = {
         res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
         }
       }),     
-      //Payment routes
+      
 
+    getMessage:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const {userId,nutriId} = req.body
+            console.log(req.body)
+            const messages = await Message.find({
+            $or: [
+                {senderId: userId, receiverId:nutriId},
+                {senderId: nutriId, receiverId: userId}
+            ]
+            }).sort({ timestamp:1 })
+            // Update message statuses to 'read'
+            await Message.updateMany({
+                $or: [
+                    { senderId: userId, receiverId: nutriId, messagestatus: 'unread' },
+                    { senderId: nutriId, receiverId: userId, messagestatus: 'unread' }
+                ]
+            }, {
+                $set: { messagestatus: 'read' }
+            });
+            console.log('this is fetched',messages);
+            res.status(ResponseStatus.OK).json({message:'Successfully fetched the messages',messages})
+        }catch(error){
+            console.error(error)
+            res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
+        }
+      }),
+
+      getProfile:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const userIdS = req.body.userData.id
+            const userId = new mongoose.Types.ObjectId(userIdS)
+            const user = await userCollection.findById(userId)
+            console.log('This is the userprofile'); 
+            res.status(ResponseStatus.OK).json({message:'Successfully fetched the profile',user})
+        }catch(error){
+            console.error(error)
+            res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
+        }
+      }),
         
+      bookedNutris:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const userIdS = req.body.userData.id
+            const userId = new mongoose.Types.ObjectId(userIdS)
+            const appoinments = await appointmentCollection.find({user_id:userId})
+            const combinedData: CombinedData[] = [];
+            for(const appointment of appoinments) {
+                const nutritionistId = appointment.nutri_id;
+                const nutritionist = await nutriCollection.findOne({ _id: new ObjectId(nutritionistId) });
+                if(nutritionist){
+                    combinedData.push({ appointment, nutritionist });
+                }
+            }
+            res.status(ResponseStatus.OK).json({ message: 'List of nutris', combinedData });
+        }catch(error){
+            
+            res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
+        }
+      }),
+
+
+      saveProfile:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const userIdS = req.body.userData.id
+            const userId = new mongoose.Types.ObjectId(userIdS)
+            const updatedName = req.body.userProfile.fullName
+            console.log("User profile updation",req.body)
+            const updatedUser = await userCollection.findByIdAndUpdate(userId,{fullName:updatedName })
+            if(updatedUser){
+                res.status(ResponseStatus.OK).json({ message: 'Updated the UserName' });
+            }else{
+                res.status(ResponseStatus.OK).json({ message: 'Failed to update the user' });
+            }
+        }catch(error){
+            res.status(ResponseStatus.BadRequest).json({error: 'Internal server error'})
+        }
+      }),
+
+      startDiet: asyncHandler(async (req: Request, res: Response) => {
+        try {
+            const userIdS = req.body.userData.id;
+            const userId = new mongoose.Types.ObjectId(userIdS);
+            const bmiWeight = await bmiCollection.findOne({ user_id: userId }).sort({ created_at: -1 }).select('weight desweight');
+            console.log('These are the values', bmiWeight);
+    
+            const desiredWeight = bmiWeight?.desweight;
+            const initialWeight = bmiWeight?.weight;
+    
+            if (desiredWeight === undefined || initialWeight === undefined) {
+                res.status(ResponseStatus.BadRequest).json({ error: 'Weight data is missing' });
+                return;
+            }
+    
+            let program = '';
+            if (desiredWeight > initialWeight) {
+                program = "Weightgain";
+            } else if (desiredWeight < initialWeight) {
+                program = "Weightloss";
+            } else {
+                program = "Maintain";
+            }
+    
+            const bmiId = bmiWeight?._id;
+            const newProgress = {
+                user_id: userIdS,
+                bmi_id: bmiId,
+                desiredWeight: desiredWeight,
+                initialWeight: initialWeight,
+                program: program
+            };
+    
+            await userProgressCollection.create(newProgress)
+                .then(success => {
+                    res.status(ResponseStatus.OK).json({ message: 'Started the diet' });
+                })
+                .catch(error => {
+                    console.log('fail', error);
+                    res.status(ResponseStatus.BadRequest).json({ error: 'Failed to create progress' });
+                });
+        } catch (error) {
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+    }),
+    
+     userProgress: asyncHandler(async (req: Request, res: Response) => {
+        try {
+            const userIdS = req.body.userData.id;
+            console.log("This is userProgress", userIdS);
+            const userId = new mongoose.Types.ObjectId(userIdS);
+            const userProgress = await userProgressCollection.findOne({ user_id: userId }).sort({ created_at: -1 });    
+            if (!userProgress) {
+                res.status(ResponseStatus.BadRequest).json({ error: 'User progress not found' });
+                return;
+            }
+    
+            const progressDate = userProgress.date;
+            if (!progressDate) {
+                res.status(ResponseStatus.BadRequest).json({ error: 'Progress date not found' });
+                return;
+            }
+    
+            const currentDate = new Date();
+            const daysDifference = calculateDaysDifference(new Date(progressDate), currentDate);
+            
+            const userProgram = userProgress.program
+            console.log("This is the program",userProgram)
+            const dailyIntake = await dailyIntakeCollection.findOne({program:userProgram})
+            console.log('This is the dailyIntake',dailyIntake)
+            res.status(ResponseStatus.OK).json({message:'Number of days',daysDifference,dailyIntake});
+        } catch (error) {
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+    }),
+
+    trackProgress: asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            console.log("enterd",req.body);
+            const userIdS = req.body.userData.id;
+            const currentDate = new Date(req.body.trackprogress.currentDate);
+            const currentWeight = req.body.trackprogress.currentWeight
+            console.log("enterd",userIdS,currentDate,currentWeight);
+            const updatedProgress = await userProgressCollection.findOneAndUpdate(
+                { user_id: userIdS }, 
+                {
+                    $set: {
+                        currentDate: currentDate,
+                        currentWeight: currentWeight
+                    }
+                },
+                { new: true, useFindAndModify: false } 
+            );
+            if (!updatedProgress) {
+                res.status(ResponseStatus.BadRequest).json({ message: ' User not updated' });
+                return;
+            }
+    
+            const progress = await userProgressCollection.findOne({ user_id: userIdS }).sort({ created_at: -1 });
+            console.log("This is the progress collection",progress);
+             
+            if (!progress) {
+                res.status(ResponseStatus.BadRequest).json({ message: 'Progress data not found' });
+                return;
+            }
+            const initialWeight = progress.initialWeight;
+            const weightChange = Math.abs(currentWeight - initialWeight);
+            console.log("This is the progress collection 2nd",initialWeight,weightChange);
+            const initialDate = new Date(progress.date)
+            console.log("This is the progress collection 3d",initialDate);
+            const numberofDays = calculateDaysDifference(new Date(initialDate), currentDate);
+            console.log("This is the progress collection 4th",numberofDays);
+            console.log("haya",weightChange,progress,numberofDays);
+            
+            res.status(ResponseStatus.OK).json({message:'Number of days',weightChange,progress,numberofDays});
+        }catch(error){
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+
+    }),
+
+    getBookings: asyncHandler(async (req: Request, res: Response) => {
+        try {
+            const page = parseInt(req.body.page);
+            const limit = parseInt(req.body.limit);
+            const skip = (page - 1) * limit;
+            const userIdS = req.body.userData?.id;
+    
+            if (!userIdS) {
+                res.status(ResponseStatus.BadRequest).json({ error: 'User ID is required' });
+                return
+            }
+    
+            const userId = new mongoose.Types.ObjectId(userIdS);
+            const appointments = await paymentCollection.find({ user_id: userId }).skip(skip).limit(limit);
+            const totalcount = await paymentCollection.countDocuments({ user_id: userId });
+    
+            const transformedAppointments = await Promise.all(
+                appointments.map(async (appointment) => {
+                    const appointmentObjectId = new mongoose.Types.ObjectId(appointment.appointment_id);
+                    const prescriptionExists = await prescriptionCollection.exists({ appointmentId: appointmentObjectId });
+    
+                    const appointmentDetails = await appointmentCollection.findOne({ _id: appointmentObjectId });
+                    let date: Date | null = null;
+                    let time: string | null = null;
+                    let fullName = 'Unknown Nutritionist';
+    
+                    if (appointmentDetails) {
+                        date = appointmentDetails.date;
+                        time = appointmentDetails.time.toString();
+    
+                        const nutritionist = await nutriCollection.findOne({ _id: appointmentDetails.nutri_id });
+                        if (nutritionist) {
+                            fullName = nutritionist.fullName;
+                        }
+                    }
+                    return {
+                        ...appointment.toObject(),
+                        displayAppointmentId: `Appt-${appointment.appointment_id.toString().slice(0, 4)}...${appointment.appointment_id.toString().slice(-4)}`,
+                        displayPaymentId: `Pay-${appointment.payment_id.slice(0, 4)}...${appointment.payment_id.slice(-4)}`,
+                        hasPrescription: !!prescriptionExists,
+                        appointmentDate: date,
+                        appointmentTime: time,
+                        nutritionistName: fullName,
+                    };
+                })
+            );
+    
+            res.status(ResponseStatus.OK).json({ message: 'Number of days', transformedAppointments, totalcount });
+        } catch (error) {
+            console.error('Internal server error:', error);
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+    }),
+    
+
+    generatePdf: asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const appointmentId = req.body.appointmentId
+            console.log("body",appointmentId,req.body);
+            
+            const prescription = await prescriptionCollection.findOne({ appointmentId });
+            if (!prescription) {
+                res.status(404).json({ message: 'Prescription not found' });
+                return
+            }
+            console.log('this is dwnl',prescription);
+
+            const doc = new PDFDocument();;
+            res.setHeader('Content-disposition', `attachment; filename=prescription-${appointmentId}.pdf`);
+            res.setHeader('Content-type', 'application/pdf');
+    
+            doc.pipe(res);
+    
+            doc.fontSize(18).text('Prescription Details', { align: 'center' });
+            doc.moveDown();
+            doc.fontSize(14).text(`Nutritionist: ${prescription.nutriName}`);
+            doc.text(`Medication: ${prescription.medication}`);
+            doc.text(`Dosage: ${prescription.dosage}`);
+            doc.text(`Frequency: ${prescription.frequency}`);
+            doc.text(`Details: ${prescription.details}`);
+            doc.text(`Date: ${prescription.date.toDateString()}`);
+            
+            doc.end();
+
+        }catch(error){
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+
+    }),
+
+    getavailableslots: asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const nutriIdS = req.body.nutritionistId
+            const nutriId = new mongoose.Types.ObjectId(nutriIdS)
+            console.log('This is the body',nutriId);
+            const slots = await appointmentCollection.find({nutri_id:nutriId,status:'pending'})
+            if (!slots.length) {
+                res.status(ResponseStatus.BadRequest).json({ error: 'There are no slots available' });
+                return
+            }
+            res.status(ResponseStatus.OK).json({ message: 'List of slots', slots });
+        }catch(error){
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+    }),
+
+    getNutriProfile: asyncHandler(async(req:Request,res:Response)=>{
+        try{
+           const nutriIdS = req.body.nutriId
+           const nutriId = new mongoose.Types.ObjectId(nutriIdS)
+           const nutri = await nutriCollection.findOne({_id:nutriId})
+           
+           res.status(ResponseStatus.OK).json({ message: 'List of slots', nutri })
+        }catch(error){
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+    }),
 }
+
+    const calculateDaysDifference = (startDate: Date, endDate: Date): number => {
+        const oneDay = 24 * 60 * 60 * 1000; // hours * minutes * seconds * milliseconds
+        const diffDays = Math.round(Math.abs((startDate.getTime() - endDate.getTime()) / oneDay));
+        return diffDays;
+};

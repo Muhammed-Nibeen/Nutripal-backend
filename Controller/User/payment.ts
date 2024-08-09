@@ -1,24 +1,18 @@
 import { NextFunction, Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
-import { userCollection } from '../../Model/userSchema';
-import nodemailer from 'nodemailer';
-import { Otp } from '../../model/otpUser';
-import bcrypt from 'bcrypt';
-
-import { bmiCollection } from '../../model/bmi';
-import { ObjectId } from 'mongodb';
-import dotenv from 'dotenv'
-import { generaterefreshToken, generateToken } from '../../utils/jwtToken';
 import mongoose from 'mongoose';
-import { foodCollection, FoodDocument } from '../../model/food';
-import { nutriCollection } from '../../model/nutriSchema';
-import { appointmentCollection } from '../../model/appoinments';
+import { appointmentCollection, AppointmentDocument } from '../../model/appoinments';
 import { ResponseStatus } from '../../constants/statusCodeEnums';
-import { generateOTP } from '../../utils/genOtp';
-import { verifyRefreshToken } from '../../utils/refreshtokenVerify';
-import { generatenewtoken } from '../../utils/newAccessToken';
 import { paymentCollection } from '../../model/payment';
+import { nutriCollection, NutriDocument } from '../../model/nutriSchema';
+import { ObjectId } from 'mongodb';
 
+interface CombinedData {
+  
+  appointment: AppointmentDocument
+  nutritionist: NutriDocument
+  
+}
 
 export const PaymentController = {
 
@@ -39,6 +33,8 @@ export const PaymentController = {
         },
         { new: true } 
       )
+      const appointment = await appointmentCollection.findOne({_id:appointmentId})
+      console.log("Payment success",appointment)
       if(updatedAppointment){
         const newAppointment={
           payment_id:paymentId,
@@ -47,12 +43,13 @@ export const PaymentController = {
           appointment_id:appointmentId
         }
         await paymentCollection.create(newAppointment)
-        res.status(ResponseStatus.OK).json({message:'Appointment booked'})
-        return;
+
+        const nutritionist = await nutriCollection.find();
+        res.status(ResponseStatus.OK).json({message:'Appointment booked ',nutritionist})
       }
         res.status(ResponseStatus.BadRequest).json({error:'Failed to book appointment'})
     }catch{
-      res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
+        res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
     }
   })
 }

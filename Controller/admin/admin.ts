@@ -4,8 +4,10 @@ import { userCollection } from '../../Model/userSchema';
 import bcrypt from 'bcrypt';
 import { generateToken } from '../../utils/jwtToken';
 import { nutriCollection } from '../../model/nutriSchema';
-import { foodCollection } from '../../model/food';
+import { foodCollection,FoodDocument  } from '../../model/food';
 import { ResponseStatus } from '../../constants/statusCodeEnums';
+import { dailyIntakeCollection } from '../../model/dailyIntake';
+import mongoose from 'mongoose';
 
 export const AdminController = {
 
@@ -119,7 +121,7 @@ export const AdminController = {
   addFood: asyncHandler(async(req: Request, res: Response) => {
     try {
       const foodimage = req.file?.filename;
-      console.log(req.body); 
+      console.log("This is food items value",req.body); 
       const kcal = Number(req.body.kcal);
       const protein = Number(req.body.protein);
       const carbs = Number(req.body.carbs);
@@ -133,15 +135,96 @@ export const AdminController = {
         fats: isNaN(fats)? 0 : fats,
         category:req.body.category,
         portion:req.body.portion,
+        description: req.body.description,
         imageUrl:foodimage
       }
       await foodCollection.create(addFood)
      res.status(ResponseStatus.OK).json({message:'Food item added successfully'})
     } catch (error) {
       console.log(error);
-      res.status(ResponseStatus.BadRequest).json({ error: 'No such user exist'});
+      res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error'});
     }
-  })
+  }),
   
+  dailyIntake: asyncHandler(async(req:Request,res:Response)=>{
+    try{
+      console.log("This is daily intake data",req.body)
+      const program = req.body.program
+      const calories = Number(req.body.calories);
+      const protein = Number(req.body.protein);
+      const carbs = Number(req.body.carbs);
+      const fats = Number(req.body.fats);
+      const addIntake={
+        program: program,
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fats: fats
+      }
+      await dailyIntakeCollection.create(addIntake)
+      res.status(ResponseStatus.OK).json({message:'Daily Intake added successfully'})
+    }catch(error){
+      console.log(error)
+      res.status(ResponseStatus.BadRequest).json({error:'Intenal server error'})
+    }
+  }),
+
+  toogleBreakfast: asyncHandler(async(req:Request,res:Response)=>{
+    try{
+      let food:FoodDocument[]
+      food = await foodCollection.find({category:"breakfast",portion:"light"}).limit(3)
+      res.status(ResponseStatus.OK).json({message:'Food items ',food})
+    }catch(error){
+      console.log(error)
+      res.status(ResponseStatus.BadRequest).json({error:'Intenal server error'})
+    }
+  }),
+
+  toogleLunch: asyncHandler(async(req:Request,res:Response)=>{
+    try{
+      let food:FoodDocument[]
+      food = await foodCollection.find({category:"lunch",portion:"light"}).limit(3)
+      res.status(ResponseStatus.OK).json({message:'Food items ',food})
+    }catch(error){
+      console.log(error)
+      res.status(ResponseStatus.BadRequest).json({error:'Intenal server error'})
+    }
+  }),
+
+  toogleDinner: asyncHandler(async(req:Request,res:Response)=>{
+    try{
+      let food:FoodDocument[]
+      food = await foodCollection.find({category:"dinner",portion:"light"}).limit(3)
+      res.status(ResponseStatus.OK).json({message:'Food items ',food})
+    }catch(error){
+      console.log(error)
+      res.status(ResponseStatus.BadRequest).json({error:'Intenal server error'})
+    }
+  }),
+
+
+  updateFood: asyncHandler(async(req:Request,res:Response)=>{
+    try{
+      const foodIdS = req.params.id;
+      const foodId = new mongoose.Types.ObjectId(foodIdS)
+      console.log("This is daily intake ",req.body,foodId)
+      const { foodName, kcal, protein, carbs, fats } = req.body;
+      const updatedFood: Partial<FoodDocument> = {
+        foodName,
+        kcal,
+        protein,
+        carbs,
+        fats,
+      };
+      const food = await foodCollection.findByIdAndUpdate(foodId, updatedFood, { new: true });
+      if (!food) {
+        res.status(ResponseStatus.BadRequest).json({error:'Update went wrong'})
+      }
+      res.status(ResponseStatus.OK).json({message:'Updated'})
+    }catch(error){
+      console.log(error)
+      res.status(ResponseStatus.BadRequest).json({error:'Intenal server error'})
+    }
+  }),
 
 }

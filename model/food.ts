@@ -10,7 +10,8 @@ export interface FoodDocument extends Document{
   fats: number,
   category: string,
   portion: string,
-  imageUrl: string
+  imageUrl: string,
+  description: string,
 }
 
 const foodSchema:Schema<FoodDocument>= new Schema({
@@ -21,7 +22,8 @@ const foodSchema:Schema<FoodDocument>= new Schema({
   fats:{type: Number,required: true},
   category:{type: String,required: true},
   portion:{type: String,required: true},
-  imageUrl:{type: String,required: true}
+  imageUrl:{type: String,required: true},
+  description:{type: String,required: true}
 })
 
 export const foodCollection = mongoose.model('food',foodSchema) as Model<FoodDocument>

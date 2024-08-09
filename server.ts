@@ -6,10 +6,13 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const path = require('path')
+import http from 'http';
 const port = 3000;
 import dotenv from 'dotenv'
 import { connectDatabase } from "./mongo";
+import { configureSocket } from "./websocket/websockerIO";
 
+//Websocket code 
 
 
 app.use(express.json())
@@ -34,6 +37,10 @@ app.use('/nutri',nutriRoute)
 
 app.use('/payment', paymentRoute);
 
-app.listen(port, () => {
+
+const server = app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
+  
 });
+
+configureSocket(server)

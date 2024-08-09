@@ -11,5 +11,10 @@ router.get('/getNutris',AdminController.getNutris)
 router.put('/managenutri/:id',AdminController.managenutris)
 router.post('/searchUser',AdminController.searchUser)
 router.post('/addfood',upload,AdminController.addFood)
+router.post('/dailyintake',AdminController.dailyIntake)
+router.get('/tooglebreakfast',AdminController.toogleBreakfast)
+router.get('/tooglelunch',AdminController.toogleLunch)
+router.get('/toogledinner',AdminController.toogleDinner)
+router.post('/updatefood/:id',AdminController.updateFood)
 
 export const adminRoute = router
