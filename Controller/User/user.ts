@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
-import { userCollection } from '../../Model/userSchema';
+import { userCollection } from '../../model/userSchema';
 import nodemailer from 'nodemailer';
 import { Otp } from '../../model/otpUser';
 import bcrypt from 'bcrypt';
@@ -35,10 +35,8 @@ dotenv.config()
 
 
 interface CombinedData {
-    
     appointment: AppointmentDocument
     nutritionist: NutriDocument
-    
 }
 
 

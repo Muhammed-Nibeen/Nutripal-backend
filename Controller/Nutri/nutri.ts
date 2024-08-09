@@ -10,7 +10,7 @@ import { nutriCollection } from '../../model/nutriSchema';
 import { ResponseStatus } from '../../constants/statusCodeEnums';
 import mongoose from 'mongoose';
 import { appointmentCollection } from '../../model/appoinments';
-import { userCollection } from '../../Model/userSchema';
+import { userCollection } from '../../model/userSchema';
 import { Message } from '../../model/message';
 import { prescriptionCollection } from '../../model/prescription';
 

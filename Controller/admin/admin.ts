@@ -1,6 +1,6 @@
 import {  Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
-import { userCollection } from '../../Model/userSchema';
+import { userCollection } from '../../model/userSchema';
 import bcrypt from 'bcrypt';
 import { generateToken } from '../../utils/jwtToken';
 import { nutriCollection } from '../../model/nutriSchema';
