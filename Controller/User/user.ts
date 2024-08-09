@@ -418,6 +418,14 @@ export const UserController = {
             res.status(ResponseStatus.BadRequest).json({error:'Error fetching details'})
         }
       }),
+      test: asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            res.status(ResponseStatus.OK).json({ message: 'Test Api'});
+        }catch(error){
+            console.error(error)
+            res.status(ResponseStatus.BadRequest).json({error:'Error fetching details'})
+        }
+      }),
 
       bookAppointment:asyncHandler(async(req:Request,res:Response)=>{
         try{

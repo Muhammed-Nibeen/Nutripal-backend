@@ -7,6 +7,7 @@ import authMiddleware from '../middleware/authMiddleware';
 const router: Router = express.Router();
 
 router.post('/signup', UserController.registerUser);
+router.get('/test', UserController.test);
 router.post('/signup/verify-otp', UserController.verifyOtp)
 router.post('/login', UserController.login);
 router.post('/forgotpassword',UserController.forgotpass)
