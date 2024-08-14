@@ -17,4 +17,4 @@ router.get('/tooglelunch',AdminController.toogleLunch)
 router.get('/toogledinner',AdminController.toogleDinner)
 router.post('/updatefood/:id',AdminController.updateFood)
 
-export const adminRoute = router
+export default router
