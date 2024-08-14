@@ -6,4 +6,4 @@ const router: Router = express.Router();
 
 router.post('/paymentsuccess',PaymentController.paymentSuccess)
 
-export const paymentRoute = router;
+export default router;

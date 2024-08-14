@@ -20,4 +20,4 @@ router.post('/getrevenue',NutriController.getRevenue)
 router.post('/getprofile',NutriController.getProfile)
 router.post('/saveprofile',NutriController.saveProfile)
 
-export const nutriRoute = router
+export default router

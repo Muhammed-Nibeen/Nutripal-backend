@@ -1,7 +1,7 @@
-import router from "./router/routes";
-import { adminRoute } from './router/adminRoutes'
-import { nutriRoute } from './router/nutriRoutes'
-import { paymentRoute } from "./router/payment";
+import userRoutes from "./router/routes";
+import adminRoutes from './router/adminRoutes'
+import nutriRoutes from './router/nutriRoutes'
+import paymentRoutes from "./router/payment";
 const express = require('express')
 const app = express()
 const cors = require('cors')
@@ -29,13 +29,13 @@ connectDatabase()
 
 app.use(cors(corsOptions))
 
-app.use('/user', router)
+app.use('/user', userRoutes)
 
-app.use('/admin', adminRoute)
+app.use('/admin', adminRoutes)
 
-app.use('/nutri',nutriRoute)
+app.use('/nutri',nutriRoutes)
 
-app.use('/payment', paymentRoute);
+app.use('/payment', paymentRoutes);
 
 
 const server = app.listen(port, () => {
