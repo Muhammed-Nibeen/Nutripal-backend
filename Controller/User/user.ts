@@ -25,7 +25,7 @@ import { paymentCollection } from '../../model/payment';
 
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
-import { prescriptionCollection } from '../../model/prescription';
+import { prescriptionCollection, PrescriptionDocument } from '../../model/prescription';
 
 
 
@@ -103,7 +103,6 @@ export const UserController = {
             res.status(ResponseStatus.OK).json({message:'Otp send to mail'})
         }
     }   catch(error){
-        console.error(error)
         res.status(500).json({error:'Internel server error'})
     }    
     }),
@@ -143,7 +142,6 @@ export const UserController = {
             res.status(ResponseStatus.BadRequest).json({message:'OTP is expired'})
         }
     }catch(error){
-        console.log(error);
         res.status(500).json({error:'Failed to register'})
     }
     }),
@@ -495,6 +493,15 @@ export const UserController = {
         }
       }),     
       
+    getNutritionist: asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            const nutriid = req.params.nutriid
+            const nutritionist = await nutriCollection.findById(nutriid)
+            res.status(ResponseStatus.OK).json({message:'Successfully fetched data',nutritionist})
+        }catch(error){
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+        }
+    }),
 
     getMessage:asyncHandler(async(req:Request,res:Response)=>{
         try{
@@ -751,18 +758,18 @@ export const UserController = {
     
 
     generatePdf: asyncHandler(async(req:Request,res:Response)=>{
-        try{
-            const appointmentId = req.body.appointmentId
-            console.log("body",appointmentId,req.body);
+        try {
+            const appointmentId = req.body.appointmentId;
+            console.log("body", appointmentId, req.body);
             
-            const prescription = await prescriptionCollection.findOne({ appointmentId });
+            const prescription: PrescriptionDocument | null = await prescriptionCollection.findOne({ appointmentId });
             if (!prescription) {
                 res.status(404).json({ message: 'Prescription not found' });
-                return
+                return;
             }
-            console.log('this is dwnl',prescription);
-
-            const doc = new PDFDocument();;
+            console.log('this is dwnl', prescription);
+    
+            const doc = new PDFDocument();
             res.setHeader('Content-disposition', `attachment; filename=prescription-${appointmentId}.pdf`);
             res.setHeader('Content-type', 'application/pdf');
     
@@ -771,15 +778,24 @@ export const UserController = {
             doc.fontSize(18).text('Prescription Details', { align: 'center' });
             doc.moveDown();
             doc.fontSize(14).text(`Nutritionist: ${prescription.nutriName}`);
-            doc.text(`Medication: ${prescription.medication}`);
-            doc.text(`Dosage: ${prescription.dosage}`);
-            doc.text(`Frequency: ${prescription.frequency}`);
+            
+            // Loop through each medication and print it
+            doc.moveDown();
+            prescription.medications.forEach((medication, index) => {
+                doc.fontSize(14).text(`Medication ${index + 1}:`);
+                doc.text(`Name: ${medication.name}`);
+                doc.text(`Dosage: ${medication.dosage}`);
+                doc.text(`Frequency: ${medication.frequency}`);
+                doc.moveDown();
+            });
+    
             doc.text(`Details: ${prescription.details}`);
             doc.text(`Date: ${prescription.date.toDateString()}`);
             
             doc.end();
-
-        }catch(error){
+    
+        } catch (error) {
+            console.error(error);
             res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
         }
 

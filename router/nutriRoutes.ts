@@ -16,5 +16,8 @@ router.post('/updateappointment',NutriController.updateAppointment)
 router.post('/saveprescription',NutriController.savePrescription)
 router.post('/getnamenutri',NutriController.getNameNutri)
 router.post('/getnameuser',NutriController.getNameUser)
+router.post('/getrevenue',NutriController.getRevenue)
+router.post('/getprofile',NutriController.getProfile)
+router.post('/saveprofile',NutriController.saveProfile)
 
 export const nutriRoute = router

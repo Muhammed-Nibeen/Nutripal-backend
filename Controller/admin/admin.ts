@@ -33,7 +33,6 @@ export const AdminController = {
         res.status(400).json({error:'Incorrect email and password'})
       }
     }catch(error){
-      console.error(error)
       res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
     }
   }),
@@ -49,7 +48,6 @@ export const AdminController = {
       res.status(ResponseStatus.OK).json({message:'List of users',users,totalcount})
     }
     catch(error){
-      console.error(error);
       res.status(ResponseStatus.BadRequest).json({error:'Error fetching data'})
     }
   }),
@@ -68,18 +66,22 @@ export const AdminController = {
         res.status(ResponseStatus.OK).json({message:'Updated successfully',updatedUser})
       }
     }catch(error){
-      console.error(error)
       res.status(ResponseStatus.BadRequest).json({error:'Error fetching User'})
     }
   }),
 
   getNutris: asyncHandler(async(req:Request,res:Response)=>{
     try{
-      const users = await nutriCollection.find({role:'Nutritionist'});
-      res.status(ResponseStatus.OK).json({message:'List of users',users})
+      const page = parseInt(req.query.page as string, 10);
+      const limit = parseInt(req.query.limit as string, 10);
+      const skip = (page - 1) * limit;
+
+      const users = await nutriCollection.find({role:'Nutritionist'}).skip(skip)
+      .limit(limit)
+      const totalcount = await nutriCollection.countDocuments();
+      res.status(ResponseStatus.OK).json({message:'List of users',users,totalcount})
     }
     catch(error){
-      console.error(error);
       res.status(ResponseStatus.BadRequest).json({error:'Error fetching data'})
     }
   }),
@@ -98,7 +100,6 @@ export const AdminController = {
         res.status(ResponseStatus.OK).json({message:'Updated successfully',updatedUser})
       }
     }catch(error){
-      console.error(error)
       res.status(ResponseStatus.BadRequest).json({error:'Error fetching Nutritionist'})
     }
   }),
@@ -113,7 +114,6 @@ export const AdminController = {
       console.log(user)
       res.status(ResponseStatus.OK).json({message:'List of users',user})
     }catch(error){
-      console.error(error);
       res.status(ResponseStatus.BadRequest).json({ error: 'No such user exist'});
     }
   }),

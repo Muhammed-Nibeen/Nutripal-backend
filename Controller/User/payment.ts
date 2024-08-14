@@ -22,6 +22,7 @@ export const PaymentController = {
       const userIdS = req.body.userId.id
       const amount = req.body.amount
       const appointmentidS = req.body.appointmentid
+      const nutriId = req.body.nutriId
       const appointmentId = new mongoose.Types.ObjectId(appointmentidS)
       const userId = new mongoose.Types.ObjectId(userIdS)
       console.log('Thee',paymentId,appointmentId,amount,userId)
@@ -37,7 +38,8 @@ export const PaymentController = {
       console.log("Payment success",appointment)
       if(updatedAppointment){
         const newAppointment={
-          payment_id:paymentId,
+          payment_id: paymentId,
+          nutri_id: nutriId,
           user_id: userId,
           amount: amount,
           appointment_id:appointmentId
@@ -47,7 +49,6 @@ export const PaymentController = {
         const nutritionist = await nutriCollection.find();
         res.status(ResponseStatus.OK).json({message:'Appointment booked ',nutritionist})
       }
-        res.status(ResponseStatus.BadRequest).json({error:'Failed to book appointment'})
     }catch{
         res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
     }

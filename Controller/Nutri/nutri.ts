@@ -13,6 +13,11 @@ import { appointmentCollection } from '../../model/appoinments';
 import { userCollection } from '../../model/userSchema';
 import { Message } from '../../model/message';
 import { prescriptionCollection } from '../../model/prescription';
+import { paymentCollection, PaymentDocument } from '../../model/payment';
+
+interface PaymentWithTotalBookings extends PaymentDocument {
+    totalBookings?: number;
+}
 
 //Otp generator function
 const generateOTP = (length: number): string => {
@@ -87,7 +92,6 @@ export const NutriController = {
         res.status(ResponseStatus.OK).json({message:'Otp send to mail'})
     }
 }   catch(error){
-    console.error(error)
     res.status(500).json({error:'Internel server error'})
 } 
   }),
@@ -125,7 +129,6 @@ export const NutriController = {
             res.status(ResponseStatus.BadRequest).json({message:'OTP is expired'})
         }
     }catch(error){
-        console.log(error);
         res.status(500).json({error:'Failed to register'})
     }
     }),
@@ -154,7 +157,6 @@ export const NutriController = {
               res.status(ResponseStatus.BadRequest).json({error:'Incorrect email and password'})
           }
       }catch(error){
-          console.error(error)
           res.status(500).json({error:'Internal server error'})
       }
 }),
@@ -184,7 +186,6 @@ export const NutriController = {
                 res.status(ResponseStatus.BadRequest).json({error:'No slots selected'}) 
             }
         }catch(error){
-        console.error(error)
         res.status(ResponseStatus.BadRequest).json({error:'Internal server error'}) 
         }
     }),
@@ -210,7 +211,6 @@ export const NutriController = {
             }
         }
         catch(error){
-            console.error(error)
             res.status(ResponseStatus.OK).json({message:'Appointments fetched'})
         }
     }),
@@ -224,8 +224,8 @@ export const NutriController = {
             const skip = (page -1) * limit;
             console.log('pagination 1',idString,page,limit);
             const id = new mongoose.Types.ObjectId(idString)
-            const query = {nutri_id:id, status:'pending'}
-            const appoinments = await appointmentCollection.find(query).skip(skip).limit(limit)
+            const query = {nutri_id:id}
+            const appoinments = await appointmentCollection.find(query).sort({ _id: -1 }).skip(skip).limit(limit)
             const totalcount = await appointmentCollection.countDocuments(query);
         
             console.log('This is appointments',appoinments,totalcount)
@@ -236,7 +236,6 @@ export const NutriController = {
             }
         }
         catch(error){
-            console.error(error)
             res.status(ResponseStatus.OK).json({message:'Appointments fetched'})
         }
     }),
@@ -252,7 +251,6 @@ export const NutriController = {
         console.log(user);
         res.status(ResponseStatus.OK).json({message:'User',user})
         }catch(error){
-            console.error(error)
             res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
         }
     }),
@@ -301,7 +299,6 @@ export const NutriController = {
 
             res.status(ResponseStatus.OK).json({ message: 'Appointment deleted successfully',appointment});
         }catch(error){
-            console.error(error)
             res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
         }
     }),
@@ -327,34 +324,42 @@ export const NutriController = {
             const Appointment = await appointmentCollection.find({nutri_id:nutriId})
             res.status(ResponseStatus.OK).json({ message: 'Appointment Edited successfully',Appointment});
         }catch(error){
-            console.error(error)
             res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
         }
     }),
 
     savePrescription:asyncHandler(async(req:Request,res:Response)=>{
-        try{
-            const {appointmentId,userId,nutriIdS,medication,dosage,frequency,details} = req.body
-            const nutriId = new mongoose.Types.ObjectId(nutriIdS)
-            const nutri = await nutriCollection.findOne({_id:nutriId},'fullName')
+        try {
+            const { appointmentId, userId, nutriIdS, medications, details } = req.body;
+        
+            // Validate if medications is an array and has at least one entry
+            if (!Array.isArray(medications) || medications.length === 0) {
+               res.status(ResponseStatus.BadRequest).json({ error: 'Medications must be a non-empty array' });
+               return
+            }
+        
+            const nutriId = new mongoose.Types.ObjectId(nutriIdS);
+            const nutri = await nutriCollection.findOne({ _id: nutriId }, 'fullName');
             const nutriName = nutri ? nutri.fullName : null;
-            const newPrescription  = new prescriptionCollection({
-                appointmentId,
-                userId,
-                nutriId,
-                nutriName,
-                medication,
-                dosage,
-                frequency,
-                details
-            })
-            console.log(newPrescription);
+        
+            const newPrescription = new prescriptionCollection({
+              appointmentId,
+              userId,
+              nutriId,
+              nutriName,
+              medications, // Storing the array of medications
+              details
+            });
             await newPrescription.save();
-            res.status(ResponseStatus.OK).json({ message: 'Prescription send to user'});
-        }catch(error){
-            console.error(error)
-            res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
-        }
+
+            const appointmentIdObj = new mongoose.Types.ObjectId(appointmentId)
+            const updateStatus = await appointmentCollection.findByIdAndUpdate(appointmentIdObj,{status:'Completed'})
+            
+            res.status(ResponseStatus.OK).json({ message: 'Prescription sent to user' });
+          } catch (error) {
+            res.status(ResponseStatus.BadRequest).json({ error: 'Internal server error' });
+          }
+        
     }),
 
     getNameNutri:asyncHandler(async(req:Request,res:Response)=>{
@@ -371,7 +376,6 @@ export const NutriController = {
                 res.status(ResponseStatus.BadRequest).json({error:'Nutritionist not found'})
               } 
         }catch(error){
-            console.error(error)
            res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
         }
     }),
@@ -380,7 +384,6 @@ export const NutriController = {
         try{
             const userIdS = req.body.userId
             console.log('This is the userids',userIdS);
-            
             const userId = new mongoose.Types.ObjectId(userIdS)
             const userNameB = await userCollection.findOne({ _id: userId }, { _id: 0, fullName: 1 })
             if (userNameB) {
@@ -390,9 +393,88 @@ export const NutriController = {
                 res.status(ResponseStatus.BadRequest).json({error:'Nutritionist not found'})
               } 
         }catch(error){
-            console.error(error)
            res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
         }
     }),
 
-}
+    getRevenue:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            console.log(req.body,'request');
+            
+            const page = parseInt(req.body.page);
+            const limit = parseInt(req.body.limit);
+            const skip = (page - 1) * limit;
+            const nutriIdS = req.body.nutriData.id
+            const nutriId = new mongoose.Types.ObjectId(nutriIdS)
+        // Step 1: Calculate total bookings per user
+             const totalBookingsPerUser = await paymentCollection.aggregate([
+            { $match: { nutri_id: nutriId } },
+            {
+                $group: {
+                    _id: '$user_id',
+                    totalBookings: { $sum: 1 },
+                },
+            },
+            ]);
+
+        // Convert totalBookingsPerUser to a dictionary for quick lookup
+        const bookingsMap: Record<string, number> = {};
+        totalBookingsPerUser.forEach((user) => {
+            bookingsMap[user._id.toString()] = user.totalBookings;
+        });
+
+        // Step 2: Get the detailed transaction data with pagination
+        const revenue = await paymentCollection
+            .find({ nutri_id: nutriId })
+            .populate({
+                path: 'user_id',
+                select: 'fullName',
+            })
+            .skip(skip)
+            .limit(limit)
+            .lean() as PaymentWithTotalBookings[] // Use lean() to get plain JavaScript objects
+
+        // Step 3: Add totalBookings to each transaction
+        revenue.forEach((transaction) => {
+            const userIdStr = transaction.user_id._id.toString();
+            transaction.totalBookings = bookingsMap[userIdStr] || 0;
+        });
+            const totalcount = await paymentCollection.countDocuments({nutri_id: nutriId });
+          
+          console.log('THis is the result',revenue);
+          
+          res.status(ResponseStatus.OK).json({ revenue,totalcount });
+        }catch(error){
+           res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
+        }
+    }),
+
+    getProfile:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            
+            const nutriIds = req.body.nutriData.id
+            const nutriId = new mongoose.Types.ObjectId(nutriIds)
+            const nutritionist = await nutriCollection.findById(nutriId)
+            res.status(ResponseStatus.OK).json({ nutritionist })
+        }catch(error){
+           res.status(ResponseStatus.BadRequest).json({error:'Internal server error'})
+        }
+    }),
+
+    saveProfile:asyncHandler(async(req:Request,res:Response)=>{
+        try{
+            console.log(req.body);
+            const nuriIdS = req.body.nutriData.id
+            const nutriId = new mongoose.Types.ObjectId(nuriIdS)
+            const updatedName = req.body.nutriProfile.fullName
+            const updatedUser = await nutriCollection.findByIdAndUpdate(nutriId,{fullName:updatedName })
+            if(updatedUser){
+                res.status(ResponseStatus.OK).json({ message: 'Updated the profile' });
+            }else{
+                res.status(ResponseStatus.OK).json({ message: 'Failed to update the user' });
+            }
+        }catch(error){
+            res.status(ResponseStatus.BadRequest).json({error: 'Internal server error'})
+        }
+      }),
+}   

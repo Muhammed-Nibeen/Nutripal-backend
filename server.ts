@@ -1,4 +1,4 @@
-import { userRoute } from "./router/routes";
+import router from "./router/routes";
 import { adminRoute } from './router/adminRoutes'
 import { nutriRoute } from './router/nutriRoutes'
 import { paymentRoute } from "./router/payment";
@@ -29,7 +29,7 @@ connectDatabase()
 
 app.use(cors(corsOptions))
 
-app.use('/user', userRoute)
+app.use('/user', router)
 
 app.use('/admin', adminRoute)
 

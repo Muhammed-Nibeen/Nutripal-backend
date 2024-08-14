@@ -23,6 +23,7 @@ router.post('/getnutris',UserController.getNutris)
 router.post('/bookappointment',UserController.bookAppointment)
 router.post('/refreshtoken',UserController.refreshToken)
 router.get('/getuser/:userid',UserController.getUser)
+router.get('/getnutritionist/:nutriid',UserController.getNutritionist)
 router.post('/getmessages',UserController.getMessage)
 router.post('/getprofile',authMiddleware,UserController.getProfile)
 router.post('/getbookednutris',UserController.bookedNutris)
@@ -35,6 +36,6 @@ router.post('/generatepdf',UserController.generatePdf)
 router.post('/getAvailableSlots',UserController.getavailableslots)
 router.post('/getnutriprofile',UserController.getNutriProfile)
 
-export const userRoute = router;
+export default router;
 
 
