@@ -17,8 +17,8 @@ import { configureSocket } from "./websocket/websockerIO";
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 const corsOptions = {
-  // orgin:'http://localhost:4200',
-  orgin:'https://nutripal-pi.vercel.app',
+  orgin:'http://localhost:4200',
+  // orgin:'https://nutripal-pi.vercel.app',
   methods:['GET','POST','PUT','DELETE'],
   allowedHeaders:['Content-Type','Authorization'],
   credentials: true
@@ -36,7 +36,6 @@ app.use('/admin', adminRoutes)
 app.use('/nutri',nutriRoutes)
 
 app.use('/payment', paymentRoutes);
-
 
 const server = app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);

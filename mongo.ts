@@ -10,6 +10,7 @@ export async function connectDatabase(){
     await mongoose.connect(MONGO_STR as string,{
       dbName,
     })
+    console.log(`MongoDB connected: ${MONGO_STR}`)
     console.log(`MongoDB connected: ${dbName}`)
   }catch(error){
     console.error('Error connecting to MongoDb:',error)

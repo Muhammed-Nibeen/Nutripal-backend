@@ -44,8 +44,8 @@ const sendOtpEmail = async (email:string,otp:string): Promise<void> =>{
     const transporter = nodemailer.createTransport({
         service:"gmail",
         auth:{
-            user: "nibiniz339@gmail.com",
-            pass:"vfgtouqbqemqffpk"
+            user: "nodejssusin@gmail.com",
+            pass:"pkvsmhbycictgwep"
         }
     })
 
@@ -453,7 +453,7 @@ export const UserController = {
             if (!refreshToken) {
                 res.status(ResponseStatus.BadRequest).json({ error: 'Refresh token is missing' }); 
             }
-            console.log(req.body);
+            console.log('Refresh token ',req.body);
             
             const isTokenValid = await verifyRefreshToken(refreshToken);
             

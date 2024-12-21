@@ -200,7 +200,7 @@ export const NutriController = {
             console.log('pagination 1',idString,page,limit);
             const id = new mongoose.Types.ObjectId(idString)
             const query = {nutri_id:id, status:'booked'}
-            const appoinments = await appointmentCollection.find(query).skip(skip).limit(limit)
+            const appoinments = await appointmentCollection.find(query).sort({ createdAt: -1 }) .skip(skip).limit(limit)
             const totalcount = await appointmentCollection.countDocuments(query);
         
             console.log('This is appointments',appoinments,totalcount)

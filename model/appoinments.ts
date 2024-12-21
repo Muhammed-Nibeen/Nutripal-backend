@@ -10,7 +10,8 @@ export interface AppointmentDocument extends Document{
   date: Date;
   time: String
   end_time: String
-  status: String
+  status: String;
+  createdAt: Date
 }
 
 const appoinmentSchema:Schema<AppointmentDocument>= new Schema({
@@ -19,7 +20,8 @@ const appoinmentSchema:Schema<AppointmentDocument>= new Schema({
   date: {type:Date,required:true},
   time: { type: String, required: true },
   end_time: {type: String,required:true},
-  status: {type: String, default:'pending'}
+  status: {type: String, default:'pending'},
+  createdAt: { type: Date, default: Date.now }
 })
 
 export const appointmentCollection = mongoose.model('appointment',appoinmentSchema)as Model<AppointmentDocument>

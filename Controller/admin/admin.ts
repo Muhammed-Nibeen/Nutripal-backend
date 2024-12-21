@@ -118,6 +118,19 @@ export const AdminController = {
     }
   }),
 
+  searchNutritionist: asyncHandler(async(req:Request,res:Response)=>{
+    try{
+      const searchQuery = req.body.Email
+      const nutritionist = await nutriCollection.find({
+        role:'Nutritionist',
+        email: {$regex: new RegExp(searchQuery, 'i')}
+      })
+      res.status(ResponseStatus.OK).json({message:'List of nutris',nutritionist})
+    }catch(error){
+      res.status(ResponseStatus.BadRequest).json({error:'No such nutrionist exist'})
+    }
+  }),
+
   addFood: asyncHandler(async(req: Request, res: Response) => {
     try {
       const foodimage = req.file?.filename;
